@@ -27,6 +27,10 @@ The following properties are required:
 Development
 -----------
 
+To build the plugin, you need to setup Maven to use the [GitHub Package Registry](https://help.github.com/en/articles/configuring-apache-maven-for-use-with-github-package-registry) https://maven.pkg.github.com/killbill/qualpay-java-client.
+
+To install a development version:
+
 ```
 kpm install_java_plugin qualpay --from-source-file=target/killbill-qualpay-plugin-0.0.1-SNAPSHOT.jar  --destination=/var/tmp/bundles
 ```
