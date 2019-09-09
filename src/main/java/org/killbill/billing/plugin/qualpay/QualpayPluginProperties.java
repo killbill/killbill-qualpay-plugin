@@ -30,6 +30,13 @@ public abstract class QualpayPluginProperties {
         additionalDataMap.put("exp_date", billingCard.getExpDate());
         additionalDataMap.put("card_type", billingCard.getCardType());
         additionalDataMap.put("verified_date", billingCard.getVerifiedDate());
+        // Don't store name / address details (GDPR)
+        additionalDataMap.put("billing_city", billingCard.getBillingCity());
+        additionalDataMap.put("billing_state", billingCard.getBillingState());
+        additionalDataMap.put("billing_zip", billingCard.getBillingZip());
+        additionalDataMap.put("billing_zip4", billingCard.getBillingZip4());
+        additionalDataMap.put("billing_country", billingCard.getBillingCountry());
+        additionalDataMap.put("billing_country_code", billingCard.getBillingCountryCode());
 
         additionalDataMap.put("id", billingCard.getCardId());
 

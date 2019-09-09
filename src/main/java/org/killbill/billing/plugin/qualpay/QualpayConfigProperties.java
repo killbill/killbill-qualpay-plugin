@@ -37,6 +37,8 @@ public class QualpayConfigProperties {
     private final String connectionTimeout;
     private final String readTimeout;
     private final String chargeDescription;
+    private final String kbUsername;
+    private final String kbPassword;
 
     public QualpayConfigProperties(final Properties properties, final String region) {
         this.region = region;
@@ -45,6 +47,8 @@ public class QualpayConfigProperties {
         this.connectionTimeout = properties.getProperty(PROPERTY_PREFIX + "connectionTimeout", DEFAULT_CONNECTION_TIMEOUT);
         this.readTimeout = properties.getProperty(PROPERTY_PREFIX + "readTimeout", DEFAULT_READ_TIMEOUT);
         this.chargeDescription = Ascii.truncate(MoreObjects.firstNonNull(properties.getProperty(PROPERTY_PREFIX + "chargeDescription"), "Kill Bill charge"), 22, "...");
+        this.kbUsername = properties.getProperty(MoreObjects.firstNonNull(properties.getProperty(PROPERTY_PREFIX + "kbUsername"), "admin"));
+        this.kbPassword = properties.getProperty(MoreObjects.firstNonNull(properties.getProperty(PROPERTY_PREFIX + "kbPassword"), "password"));
     }
 
     public String getApiKey() {
@@ -65,5 +69,13 @@ public class QualpayConfigProperties {
 
     public String getChargeDescription() {
         return chargeDescription;
+    }
+
+    public String getKbUsername() {
+        return kbUsername;
+    }
+
+    public String getKbPassword() {
+        return kbPassword;
     }
 }

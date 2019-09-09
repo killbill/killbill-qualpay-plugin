@@ -17,6 +17,7 @@
 
 package org.killbill.billing.plugin.qualpay;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
 import org.killbill.billing.payment.api.PaymentMethodPlugin;
 import org.killbill.billing.plugin.TestUtils;
 import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
+import org.killbill.billing.security.api.SecurityApi;
 import org.killbill.billing.util.api.CustomFieldUserApi;
 import org.killbill.billing.util.callcontext.CallContext;
 import org.killbill.billing.util.callcontext.TenantContext;
@@ -73,6 +75,8 @@ public class TestBase {
         killbillApi = TestUtils.buildOSGIKillbillAPI(account);
         customFieldUserApi = Mockito.mock(CustomFieldUserApi.class);
         Mockito.when(killbillApi.getCustomFieldUserApi()).thenReturn(customFieldUserApi);
+        final SecurityApi securityApi = Mockito.mock(SecurityApi.class);
+        Mockito.when(killbillApi.getSecurityApi()).thenReturn(securityApi);
 
         TestUtils.buildPaymentMethod(account.getId(), account.getPaymentMethodId(), QualpayActivator.PLUGIN_NAME, killbillApi);
 

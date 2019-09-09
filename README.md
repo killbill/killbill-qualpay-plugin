@@ -27,6 +27,8 @@ The following properties are required:
 The following properties are optional:
 
 * org.killbill.billing.plugin.qualpay.merchantId: Qualpay merchant id
+* org.killbill.billing.plugin.qualpay.kbUsername: plugin username to communicate with Kill Bill
+* org.killbill.billing.plugin.qualpay.kbPassword: plugin password to communicate with Kill Bill
 
 Migration
 ---------

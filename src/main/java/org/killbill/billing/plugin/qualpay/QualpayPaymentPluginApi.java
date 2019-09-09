@@ -36,13 +36,13 @@ import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
 import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PaymentMethodPlugin;
 import org.killbill.billing.payment.api.PluginProperty;
-import org.killbill.billing.payment.api.TransactionType;
 import org.killbill.billing.payment.plugin.api.GatewayNotification;
 import org.killbill.billing.payment.plugin.api.HostedPaymentPageFormDescriptor;
 import org.killbill.billing.payment.plugin.api.PaymentMethodInfoPlugin;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApiException;
 import org.killbill.billing.payment.plugin.api.PaymentTransactionInfoPlugin;
 import org.killbill.billing.plugin.api.PluginProperties;
+import org.killbill.billing.plugin.api.core.PluginCustomField;
 import org.killbill.billing.plugin.api.payment.PluginPaymentMethodInfoPlugin;
 import org.killbill.billing.plugin.api.payment.PluginPaymentPluginApi;
 import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
@@ -50,7 +50,7 @@ import org.killbill.billing.plugin.qualpay.dao.gen.tables.QualpayPaymentMethods;
 import org.killbill.billing.plugin.qualpay.dao.gen.tables.QualpayResponses;
 import org.killbill.billing.plugin.qualpay.dao.gen.tables.records.QualpayPaymentMethodsRecord;
 import org.killbill.billing.plugin.qualpay.dao.gen.tables.records.QualpayResponsesRecord;
-import org.killbill.billing.plugin.util.KillBillMoney;
+import org.killbill.billing.util.api.CustomFieldApiException;
 import org.killbill.billing.util.callcontext.CallContext;
 import org.killbill.billing.util.callcontext.TenantContext;
 import org.killbill.billing.util.customfield.CustomField;
@@ -61,12 +61,12 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import io.swagger.client.api.CustomerVaultApi;
 import io.swagger.client.model.AddBillingCardRequest;
 import io.swagger.client.model.AddCustomerRequest;
 import io.swagger.client.model.BillingCard;
 import io.swagger.client.model.CustomerResponse;
+import io.swagger.client.model.CustomerVault;
 import io.swagger.client.model.DeleteBillingCardRequest;
 import io.swagger.client.model.GetBillingCardsResponse;
 import io.swagger.client.model.GetBillingResponse;
@@ -129,36 +129,71 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                  final Iterable<PluginProperty> properties,
                                  final CallContext context) throws PaymentPluginApiException {
         final String qualpayCustomerIdMaybeNull = getCustomerIdNoException(kbAccountId, context);
-        final Long merchantId = getMerchantId(context);
 
-        // Sync Qualpay payment methods (source of truth)
-        final ApiClient apiClient = buildApiClient(context);
-        final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
+        final String qualpayId;
+        if (qualpayCustomerIdMaybeNull != null && paymentMethodProps.getExternalPaymentMethodId() != null) {
+            // The customer and payment method already exist (sync code path), we just need to update our tables
+            qualpayId = paymentMethodProps.getExternalPaymentMethodId();
+        } else if (qualpayCustomerIdMaybeNull == null && paymentMethodProps.getExternalPaymentMethodId() != null) {
+            throw new PaymentPluginApiException("USER", "Specified Qualpay card id but missing QUALPAY_CUSTOMER_ID custom field");
+        } else {
+            // We need to create a new payment method, either on a new customer or on an existing one
+            final ApiClient apiClient = buildApiClient(context);
+            final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
 
-        final AddBillingCardRequest billingCardsItem = new AddBillingCardRequest();
+            final AddBillingCardRequest billingCardsItem = new AddBillingCardRequest();
+            billingCardsItem.setCardNumber(PluginProperties.findPluginPropertyValue("card_number", properties));
+            billingCardsItem.setExpDate(PluginProperties.findPluginPropertyValue("exp_date", properties));
+            billingCardsItem.setCvv2(PluginProperties.findPluginPropertyValue("cvv2", properties));
+            billingCardsItem.setBillingFirstName(PluginProperties.findPluginPropertyValue("billing_first_name", properties));
+            billingCardsItem.setBillingLastName(PluginProperties.findPluginPropertyValue("billing_last_name", properties));
+            billingCardsItem.setBillingFirmName(PluginProperties.findPluginPropertyValue("billing_firm_name", properties));
+            billingCardsItem.setBillingZip(PluginProperties.findPluginPropertyValue("billing_zip", properties));
 
-        try {
-            if (qualpayCustomerIdMaybeNull == null) {
-                // Create Vault and payment method
-                final AddCustomerRequest addCustomerRequest = new AddCustomerRequest();
-                addCustomerRequest.setAutoGenerateCustomerId(true);
-                addCustomerRequest.addBillingCardsItem(billingCardsItem);
-                customerVaultApi.addCustomer(addCustomerRequest);
-            } else {
-                // Add payment method to existing customer
-                final CustomerResponse customerResponse = customerVaultApi.addBillingCard(qualpayCustomerIdMaybeNull, billingCardsItem);
-                customerResponse.getData().getBillingCards().get(customerResponse.getData().getBillingCards().size() -1 );
+            try {
+                if (qualpayCustomerIdMaybeNull == null) {
+                    // Create customer and payment method
+                    final AddCustomerRequest addCustomerRequest = new AddCustomerRequest();
+                    addCustomerRequest.setAutoGenerateCustomerId(true);
+                    addCustomerRequest.addBillingCardsItem(billingCardsItem);
+                    final String customerFirstName = PluginProperties.findPluginPropertyValue("customer_first_name", properties);
+                    addCustomerRequest.setCustomerFirstName(customerFirstName != null ? customerFirstName : billingCardsItem.getBillingFirstName());
+                    final String customerLastName = PluginProperties.findPluginPropertyValue("customer_last_name", properties);
+                    addCustomerRequest.setCustomerLastName(customerLastName != null ? customerLastName : billingCardsItem.getBillingLastName());
+                    final String customerFirmName = PluginProperties.findPluginPropertyValue("customer_firm_name", properties);
+                    addCustomerRequest.setCustomerFirmName(customerFirmName != null ? customerFirmName : billingCardsItem.getBillingFirmName());
+                    final CustomerVault customerVault = customerVaultApi.addCustomer(addCustomerRequest).getData();
+                    // TODO Guaranteed it's the last one?
+                    final BillingCard createdBillingCard = customerVault.getBillingCards().get(customerVault.getBillingCards().size() - 1);
+                    qualpayId = createdBillingCard.getCardId();
+
+                    // Add the magic Custom Field
+                    final PluginCustomField customField = new PluginCustomField(kbAccountId,
+                                                                                ObjectType.ACCOUNT,
+                                                                                "QUALPAY_CUSTOMER_ID",
+                                                                                customerVault.getCustomerId(),
+                                                                                clock.getUTCNow());
+                    try {
+                        final QualpayConfigProperties qualpayConfigProperties = qualpayConfigPropertiesConfigurationHandler.getConfigurable(context.getTenantId());
+                        killbillAPI.getSecurityApi().login(qualpayConfigProperties.getKbUsername(), qualpayConfigProperties.getKbPassword());
+                        killbillAPI.getCustomFieldUserApi().addCustomFields(ImmutableList.<CustomField>of(customField), context);
+                    } finally {
+                        killbillAPI.getSecurityApi().logout();
+                    }
+                } else {
+                    // Add payment method to existing customer
+                    final CustomerResponse customerResponse = customerVaultApi.addBillingCard(qualpayCustomerIdMaybeNull, billingCardsItem);
+                    // TODO Guaranteed it's the last one?
+                    qualpayId = customerResponse.getData().getBillingCards().get(customerResponse.getData().getBillingCards().size() - 1).getCardId();
+                }
+            } catch (final ApiException e) {
+                throw new PaymentPluginApiException("Error connecting to Qualpay: " + e.getResponseBody(), e);
+            } catch (final CustomFieldApiException e) {
+                throw new PaymentPluginApiException("Error adding custom field", e);
             }
-        } catch (final ApiException e) {
-            throw new PaymentPluginApiException("Error connecting to Qualpay", e);
         }
 
         final Map<String, Object> additionalDataMap = PluginProperties.toMap(properties);
-        final String qualpayId = paymentMethodProps.getExternalPaymentMethodId();//cardId
-        if (paymentMethodProps.getExternalPaymentMethodId() == null) {
-            throw new PaymentPluginApiException("USER", "PaymentMethodPlugin#getExternalPaymentMethodId must be passed");
-        }
-
         final DateTime utcNow = clock.getUTCNow();
         try {
             dao.addPaymentMethod(kbAccountId, kbPaymentMethodId, additionalDataMap, qualpayId, utcNow, context.getTenantId());
