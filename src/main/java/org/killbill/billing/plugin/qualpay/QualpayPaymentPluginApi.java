@@ -95,15 +95,6 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
     }
 
     @Override
-    public List<PaymentTransactionInfoPlugin> getPaymentInfo(final UUID kbAccountId,
-                                                             final UUID kbPaymentId,
-                                                             final Iterable<PluginProperty> properties,
-                                                             final TenantContext context) throws PaymentPluginApiException {
-        // It doesn't look like we can retrieve it from Qualpay?
-        return super.getPaymentInfo(kbAccountId, kbPaymentId, properties, context);
-    }
-
-    @Override
     protected PaymentTransactionInfoPlugin buildPaymentTransactionInfoPlugin(final QualpayResponsesRecord record) {
         return QualpayPaymentTransactionInfoPlugin.build(record);
     }
