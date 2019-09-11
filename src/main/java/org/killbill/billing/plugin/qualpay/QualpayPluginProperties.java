@@ -19,7 +19,9 @@ package org.killbill.billing.plugin.qualpay;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import io.swagger.client.model.BillingCard;
+import io.swagger.client.model.GatewayResponse;
 
 public abstract class QualpayPluginProperties {
 
@@ -39,6 +41,17 @@ public abstract class QualpayPluginProperties {
         additionalDataMap.put("billing_country_code", billingCard.getBillingCountryCode());
 
         additionalDataMap.put("id", billingCard.getCardId());
+
+        return additionalDataMap;
+    }
+
+    public static Map<String, Object> toAdditionalDataMap(final GatewayResponse gatewayResponse) {
+        final Map<String, Object> additionalDataMap = new HashMap<String, Object>();
+
+        additionalDataMap.put("id", gatewayResponse.getPgId());
+        additionalDataMap.put("rcode", gatewayResponse.getRcode());
+        additionalDataMap.put("rmsg", gatewayResponse.getRmsg());
+        additionalDataMap.put("auth_code", gatewayResponse.getAuthCode());
 
         return additionalDataMap;
     }

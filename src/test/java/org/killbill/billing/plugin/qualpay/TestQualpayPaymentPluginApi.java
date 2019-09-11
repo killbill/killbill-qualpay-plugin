@@ -17,14 +17,22 @@
 
 package org.killbill.billing.plugin.qualpay;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import org.killbill.billing.ObjectType;
+import org.killbill.billing.payment.api.Payment;
+import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PaymentMethodPlugin;
+import org.killbill.billing.payment.api.PaymentTransaction;
 import org.killbill.billing.payment.api.PluginProperty;
+import org.killbill.billing.payment.api.TransactionType;
 import org.killbill.billing.payment.plugin.api.PaymentMethodInfoPlugin;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApiException;
+import org.killbill.billing.payment.plugin.api.PaymentPluginStatus;
+import org.killbill.billing.payment.plugin.api.PaymentTransactionInfoPlugin;
+import org.killbill.billing.plugin.TestUtils;
 import org.killbill.billing.plugin.api.PluginProperties;
 import org.killbill.billing.plugin.api.core.PluginCustomField;
 import org.killbill.billing.plugin.api.payment.PluginPaymentMethodPlugin;
@@ -64,7 +72,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
         assertNotNull(paymentMethods.get(0).getExternalPaymentMethodId());
 
         // Verify the Qualpay id
-        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context);
+        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context, true);
         final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
         final GetBillingResponse billingCards = customerVaultApi.getBillingCards(customerId, null);
         assertEquals(billingCards.getData().getBillingCards().size(), 1);
@@ -86,7 +94,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
         billingCardRequest.setExpDate("0420");
         billingCardRequest.setCardNumber("4111111111111111");
         addCustomerRequest.setBillingCards(ImmutableList.of(billingCardRequest));
-        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context);
+        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context, true);
         final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
         final CustomerVault customerVault = customerVaultApi.addCustomer(addCustomerRequest).getData();
 
@@ -128,7 +136,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
         updateBillingCardRequest.setBillingLastName(PluginProperties.findPluginPropertyValue("billing_last_name", paymentMethodDetail.getProperties()));
         updateBillingCardRequest.setBillingZip(PluginProperties.findPluginPropertyValue("billing_zip", paymentMethodDetail.getProperties()));
         updateBillingCardRequest.setBillingCountryCode("840");
-        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context);
+        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context, true);
         final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
         customerVaultApi.updateBillingCard(customerId, updateBillingCardRequest);
 
@@ -139,6 +147,215 @@ public class TestQualpayPaymentPluginApi extends TestBase {
                                                                              ImmutableList.of(),
                                                                              context);
         assertEquals(PluginProperties.toMap(paymentMethodDetail.getProperties()).get("billing_country_code"), "840");
+    }
+
+    @Test(groups = "slow")
+    public void testSuccessfulAuthCapture() throws PaymentPluginApiException, ApiException, PaymentApiException {
+        final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
+
+        final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
+        final PaymentTransaction authorizationTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.AUTHORIZE, BigDecimal.TEN, payment.getCurrency());
+        final PaymentTransaction captureTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.CAPTURE, BigDecimal.TEN, payment.getCurrency());
+
+        final PaymentTransactionInfoPlugin authorizationInfoPlugin = qualpayPaymentPluginApi.authorizePayment(account.getId(),
+                                                                                                              payment.getId(),
+                                                                                                              authorizationTransaction.getId(),
+                                                                                                              kbPaymentMethodId, authorizationTransaction.getAmount(),
+                                                                                                              authorizationTransaction.getCurrency(),
+                                                                                                              ImmutableList.of(),
+                                                                                                              context);
+        TestUtils.updatePaymentTransaction(authorizationTransaction, authorizationInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, authorizationTransaction, authorizationInfoPlugin, PaymentPluginStatus.PROCESSED);
+
+        final PaymentTransactionInfoPlugin captureInfoPlugin = qualpayPaymentPluginApi.capturePayment(account.getId(),
+                                                                                                      payment.getId(),
+                                                                                                      captureTransaction.getId(),
+                                                                                                      kbPaymentMethodId, captureTransaction.getAmount(),
+                                                                                                      captureTransaction.getCurrency(),
+                                                                                                      ImmutableList.of(),
+                                                                                                      context);
+        TestUtils.updatePaymentTransaction(captureTransaction, captureInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, captureTransaction, captureInfoPlugin, PaymentPluginStatus.PROCESSED);
+    }
+
+    @Test(groups = "slow")
+    public void testSuccessfulAuthVoid() throws PaymentPluginApiException, ApiException, PaymentApiException {
+        final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
+
+        final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
+        final PaymentTransaction authorizationTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.AUTHORIZE, BigDecimal.TEN, payment.getCurrency());
+        final PaymentTransaction voidTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.VOID, BigDecimal.TEN, payment.getCurrency());
+
+        final PaymentTransactionInfoPlugin authorizationInfoPlugin = qualpayPaymentPluginApi.authorizePayment(account.getId(),
+                                                                                                              payment.getId(),
+                                                                                                              authorizationTransaction.getId(),
+                                                                                                              kbPaymentMethodId, authorizationTransaction.getAmount(),
+                                                                                                              authorizationTransaction.getCurrency(),
+                                                                                                              ImmutableList.of(),
+                                                                                                              context);
+        TestUtils.updatePaymentTransaction(authorizationTransaction, authorizationInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, authorizationTransaction, authorizationInfoPlugin, PaymentPluginStatus.PROCESSED);
+
+        final PaymentTransactionInfoPlugin voidInfoPlugin = qualpayPaymentPluginApi.voidPayment(account.getId(),
+                                                                                                payment.getId(),
+                                                                                                voidTransaction.getId(),
+                                                                                                kbPaymentMethodId, ImmutableList.of(),
+                                                                                                context);
+        TestUtils.updatePaymentTransaction(voidTransaction, voidInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, voidTransaction, voidInfoPlugin, PaymentPluginStatus.PROCESSED);
+    }
+
+    @Test(groups = "slow")
+    public void testSuccessfulPurchaseRefund() throws PaymentPluginApiException, ApiException, PaymentApiException {
+        final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
+
+        final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
+        final PaymentTransaction purchaseTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.PURCHASE, BigDecimal.TEN, payment.getCurrency());
+        final PaymentTransaction refundTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.REFUND, BigDecimal.TEN, payment.getCurrency());
+
+        final PaymentTransactionInfoPlugin purchaseInfoPlugin = qualpayPaymentPluginApi.purchasePayment(account.getId(),
+                                                                                                        payment.getId(),
+                                                                                                        purchaseTransaction.getId(),
+                                                                                                        kbPaymentMethodId,
+                                                                                                        purchaseTransaction.getAmount(),
+                                                                                                        purchaseTransaction.getCurrency(),
+                                                                                                        ImmutableList.of(),
+                                                                                                        context);
+        TestUtils.updatePaymentTransaction(purchaseTransaction, purchaseInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, purchaseTransaction, purchaseInfoPlugin, PaymentPluginStatus.PROCESSED);
+
+        final PaymentTransactionInfoPlugin refundInfoPlugin = qualpayPaymentPluginApi.refundPayment(account.getId(),
+                                                                                                    payment.getId(),
+                                                                                                    refundTransaction.getId(),
+                                                                                                    kbPaymentMethodId,
+                                                                                                    refundTransaction.getAmount(),
+                                                                                                    refundTransaction.getCurrency(),
+                                                                                                    ImmutableList.of(),
+                                                                                                    context);
+        TestUtils.updatePaymentTransaction(refundTransaction, refundInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, refundTransaction, refundInfoPlugin, PaymentPluginStatus.PROCESSED);
+    }
+
+    @Test(groups = "slow")
+    public void testSuccessfulPurchaseMultiplePartialRefunds() throws PaymentPluginApiException, ApiException, PaymentApiException {
+        final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
+
+        final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
+        final PaymentTransaction purchaseTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.PURCHASE, BigDecimal.TEN, payment.getCurrency());
+        final PaymentTransaction refundTransaction1 = TestUtils.buildPaymentTransaction(payment, TransactionType.REFUND, new BigDecimal("1"), payment.getCurrency());
+        final PaymentTransaction refundTransaction2 = TestUtils.buildPaymentTransaction(payment, TransactionType.REFUND, new BigDecimal("2"), payment.getCurrency());
+        final PaymentTransaction refundTransaction3 = TestUtils.buildPaymentTransaction(payment, TransactionType.REFUND, new BigDecimal("3"), payment.getCurrency());
+
+        final PaymentTransactionInfoPlugin purchaseInfoPlugin = qualpayPaymentPluginApi.purchasePayment(account.getId(),
+                                                                                                        payment.getId(),
+                                                                                                        purchaseTransaction.getId(),
+                                                                                                        kbPaymentMethodId,
+                                                                                                        purchaseTransaction.getAmount(),
+                                                                                                        purchaseTransaction.getCurrency(),
+                                                                                                        ImmutableList.of(),
+                                                                                                        context);
+        TestUtils.updatePaymentTransaction(purchaseTransaction, purchaseInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, purchaseTransaction, purchaseInfoPlugin, PaymentPluginStatus.PROCESSED);
+
+        final List<PaymentTransactionInfoPlugin> paymentTransactionInfoPlugin1 = qualpayPaymentPluginApi.getPaymentInfo(account.getId(),
+                                                                                                                        payment.getId(),
+                                                                                                                        ImmutableList.of(),
+                                                                                                                        context);
+        assertEquals(paymentTransactionInfoPlugin1.size(), 1);
+
+        final PaymentTransactionInfoPlugin refundInfoPlugin1 = qualpayPaymentPluginApi.refundPayment(account.getId(),
+                                                                                                     payment.getId(),
+                                                                                                     refundTransaction1.getId(),
+                                                                                                     kbPaymentMethodId,
+                                                                                                     refundTransaction1.getAmount(),
+                                                                                                     refundTransaction1.getCurrency(),
+                                                                                                     ImmutableList.of(),
+                                                                                                     context);
+        TestUtils.updatePaymentTransaction(refundTransaction1, refundInfoPlugin1);
+        verifyPaymentTransactionInfoPlugin(payment, refundTransaction1, refundInfoPlugin1, PaymentPluginStatus.PROCESSED);
+
+        final List<PaymentTransactionInfoPlugin> paymentTransactionInfoPlugin2 = qualpayPaymentPluginApi.getPaymentInfo(account.getId(),
+                                                                                                                        payment.getId(),
+                                                                                                                        ImmutableList.of(),
+                                                                                                                        context);
+        assertEquals(paymentTransactionInfoPlugin2.size(), 2);
+
+        final PaymentTransactionInfoPlugin refundInfoPlugin2 = qualpayPaymentPluginApi.refundPayment(account.getId(),
+                                                                                                     payment.getId(),
+                                                                                                     refundTransaction2.getId(),
+                                                                                                     kbPaymentMethodId,
+                                                                                                     refundTransaction2.getAmount(),
+                                                                                                     refundTransaction2.getCurrency(),
+                                                                                                     ImmutableList.of(),
+                                                                                                     context);
+        TestUtils.updatePaymentTransaction(refundTransaction2, refundInfoPlugin2);
+        verifyPaymentTransactionInfoPlugin(payment, refundTransaction2, refundInfoPlugin2, PaymentPluginStatus.PROCESSED);
+
+        final List<PaymentTransactionInfoPlugin> paymentTransactionInfoPlugin3 = qualpayPaymentPluginApi.getPaymentInfo(account.getId(),
+                                                                                                                        payment.getId(),
+                                                                                                                        ImmutableList.of(),
+                                                                                                                        context);
+        assertEquals(paymentTransactionInfoPlugin3.size(), 3);
+
+        final PaymentTransactionInfoPlugin refundInfoPlugin3 = qualpayPaymentPluginApi.refundPayment(account.getId(),
+                                                                                                     payment.getId(),
+                                                                                                     refundTransaction3.getId(),
+                                                                                                     kbPaymentMethodId,
+                                                                                                     refundTransaction3.getAmount(),
+                                                                                                     refundTransaction3.getCurrency(),
+                                                                                                     ImmutableList.of(),
+                                                                                                     context);
+        TestUtils.updatePaymentTransaction(refundTransaction3, refundInfoPlugin3);
+        verifyPaymentTransactionInfoPlugin(payment, refundTransaction3, refundInfoPlugin3, PaymentPluginStatus.PROCESSED);
+
+        final List<PaymentTransactionInfoPlugin> paymentTransactionInfoPlugin4 = qualpayPaymentPluginApi.getPaymentInfo(account.getId(),
+                                                                                                                        payment.getId(),
+                                                                                                                        ImmutableList.of(),
+                                                                                                                        context);
+        assertEquals(paymentTransactionInfoPlugin4.size(), 4);
+    }
+
+    private void verifyPaymentTransactionInfoPlugin(final Payment payment,
+                                                    final PaymentTransaction paymentTransaction,
+                                                    final PaymentTransactionInfoPlugin paymentTransactionInfoPlugin,
+                                                    final PaymentPluginStatus expectedPaymentPluginStatus) {
+        assertEquals(paymentTransactionInfoPlugin.getKbPaymentId(), payment.getId());
+        assertEquals(paymentTransactionInfoPlugin.getKbTransactionPaymentId(), paymentTransaction.getId());
+        assertEquals(paymentTransactionInfoPlugin.getTransactionType(), paymentTransaction.getTransactionType());
+        if (TransactionType.VOID.equals(paymentTransaction.getTransactionType())) {
+            assertNull(paymentTransactionInfoPlugin.getAmount());
+            assertNull(paymentTransactionInfoPlugin.getCurrency());
+        } else {
+            assertEquals(paymentTransactionInfoPlugin.getAmount().compareTo(paymentTransaction.getAmount()), 0);
+            assertEquals(paymentTransactionInfoPlugin.getCurrency(), paymentTransaction.getCurrency());
+        }
+        assertNotNull(paymentTransactionInfoPlugin.getCreatedDate());
+        assertNotNull(paymentTransactionInfoPlugin.getEffectiveDate());
+
+        if ("skip_gw".equals(paymentTransactionInfoPlugin.getGatewayError()) ||
+            "true".equals(PluginProperties.findPluginPropertyValue("skipGw", paymentTransactionInfoPlugin.getProperties()))) {
+            assertNull(paymentTransactionInfoPlugin.getGatewayErrorCode());
+            assertEquals(paymentTransactionInfoPlugin.getStatus(), PaymentPluginStatus.PROCESSED);
+        } else {
+            assertEquals(paymentTransactionInfoPlugin.getGatewayErrorCode(), "000");
+            assertEquals(paymentTransactionInfoPlugin.getStatus(), expectedPaymentPluginStatus);
+
+            assertNotNull(paymentTransactionInfoPlugin.getGatewayError());
+            if (expectedPaymentPluginStatus == PaymentPluginStatus.PROCESSED) {
+                assertNotNull(paymentTransactionInfoPlugin.getFirstPaymentReferenceId());
+                if (paymentTransaction.getTransactionType() == TransactionType.AUTHORIZE || paymentTransaction.getTransactionType() == TransactionType.PURCHASE) {
+                    assertNotNull(paymentTransactionInfoPlugin.getSecondPaymentReferenceId());
+                }
+            }
+        }
+    }
+
+    private UUID createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId() throws PaymentPluginApiException {
+        final UUID kbAccountId = account.getId();
+        createQualpayCustomerWithCreditCard();
+        final List<PaymentMethodInfoPlugin> paymentMethods = qualpayPaymentPluginApi.getPaymentMethods(kbAccountId, true, ImmutableList.<PluginProperty>of(), context);
+        assertEquals(paymentMethods.size(), 1);
+        return paymentMethods.get(0).getPaymentMethodId();
     }
 
     private String createQualpayCustomerWithCreditCard() throws PaymentPluginApiException {

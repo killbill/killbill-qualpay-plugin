@@ -23,12 +23,16 @@ Configuration
 The following properties are required:
 
 * org.killbill.billing.plugin.qualpay.apiKey: Qualpay API security key
+* org.killbill.billing.plugin.qualpay.merchantId: Qualpay merchant id
 
 The following properties are optional:
 
-* org.killbill.billing.plugin.qualpay.merchantId: Qualpay merchant id
-* org.killbill.billing.plugin.qualpay.kbUsername: plugin username to communicate with Kill Bill
-* org.killbill.billing.plugin.qualpay.kbPassword: plugin password to communicate with Kill Bill
+* org.killbill.billing.plugin.qualpay.baseUrl: Qualpay endpoint (default: `https://api-test.qualpay.com`)
+* org.killbill.billing.plugin.qualpay.connectionTimeout: connect timeout in millis for the Qualpay client (default: `30000`)
+* org.killbill.billing.plugin.qualpay.readTimeout: read timeout in mills for the Qualpay timeout (default: `60000`)
+* org.killbill.billing.plugin.qualpay.chargeDescription: statement description (default: `Kill Bill charge`)
+* org.killbill.billing.plugin.qualpay.kbUsername: plugin username to communicate with Kill Bill (default: `admin`)
+* org.killbill.billing.plugin.qualpay.kbPassword: plugin password to communicate with Kill Bill (default `password`)
 
 Migration
 ---------

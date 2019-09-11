@@ -26,14 +26,13 @@ public class QualpayConfigProperties {
 
     private static final String PROPERTY_PREFIX = "org.killbill.billing.plugin.qualpay.";
 
-    private static final String ENTRY_DELIMITER = "|";
-    private static final String KEY_VALUE_DELIMITER = "#";
     private static final String DEFAULT_CONNECTION_TIMEOUT = "30000";
     private static final String DEFAULT_READ_TIMEOUT = "60000";
 
     private final String region;
     private final String apiKey;
     private final String merchantId;
+    private final String baseUrl;
     private final String connectionTimeout;
     private final String readTimeout;
     private final String chargeDescription;
@@ -44,6 +43,7 @@ public class QualpayConfigProperties {
         this.region = region;
         this.apiKey = properties.getProperty(PROPERTY_PREFIX + "apiKey");
         this.merchantId = properties.getProperty(PROPERTY_PREFIX + "merchantId");
+        this.baseUrl = MoreObjects.firstNonNull(properties.getProperty(PROPERTY_PREFIX + "baseUrl"), "https://api-test.qualpay.com");
         this.connectionTimeout = properties.getProperty(PROPERTY_PREFIX + "connectionTimeout", DEFAULT_CONNECTION_TIMEOUT);
         this.readTimeout = properties.getProperty(PROPERTY_PREFIX + "readTimeout", DEFAULT_READ_TIMEOUT);
         this.chargeDescription = Ascii.truncate(MoreObjects.firstNonNull(properties.getProperty(PROPERTY_PREFIX + "chargeDescription"), "Kill Bill charge"), 22, "...");
@@ -57,6 +57,10 @@ public class QualpayConfigProperties {
 
     public String getMerchantId() {
         return merchantId;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
     public String getConnectionTimeout() {
