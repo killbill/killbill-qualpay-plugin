@@ -34,20 +34,30 @@ The following properties are optional:
 * org.killbill.billing.plugin.qualpay.kbUsername: plugin username to communicate with Kill Bill (default: `admin`)
 * org.killbill.billing.plugin.qualpay.kbPassword: plugin password to communicate with Kill Bill (default `password`)
 
+Tokenization
+------------
+
+To avoid sending the full PAN to Kill Bill, your front-end application should tokenize first the card in Qualpay using the [Add a Customer](https://www.qualpay.com/developer/api/customer-vault/add-a-customer) Vault API.
+
+Qualpay will return a customer id that needs to be set as a the custom field `QUALPAY_CUSTOMER_ID` on the Kill Bill account. You can then trigger a [refresh](https://killbill.github.io/slate/#account-refresh-account-payment-methods) to sync back all card in the Vault to Kill Bill.
+
 Migration
 ---------
 
-The Qualpay customer id (used in the Vault APIs) is expected as the custom field `QUALPAY_CUSTOMER_ID` on the account. When migrating to Kill Bill, you need to first manually set this custom field for your existing customers.
-
-To migrate payment methods, trigger a [refresh](https://killbill.github.io/slate/#account-refresh-account-payment-methods) for each account in your Vault.
+When migrating to Kill Bill, you need to create one Kill Bill account for each of your customers and set the `QUALPAY_CUSTOMER_ID` custom field. Similar to the tokenization step above, you must then trigger a refresh of the payment methods for each account.
 
 Development
 -----------
 
 To build the plugin, you need to setup Maven to use the [GitHub Package Registry](https://help.github.com/en/articles/configuring-apache-maven-for-use-with-github-package-registry) https://maven.pkg.github.com/killbill/qualpay-java-client.
 
-To install a development version:
+Deployment
+----------
+
+To install the plugin:
 
 ```
-kpm install_java_plugin qualpay --from-source-file=target/killbill-qualpay-plugin-0.0.1-SNAPSHOT.jar  --destination=/var/tmp/bundles
+kpm install_java_plugin qualpay --from-source-file=target/killbill-qualpay-plugin-0.0.1-SNAPSHOT.jar --destination=/var/tmp/bundles
 ```
+
+On AWS or in our Docker images, the destination should be `/var/lib/killbill/bundles`.
