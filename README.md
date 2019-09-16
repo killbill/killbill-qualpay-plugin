@@ -37,14 +37,16 @@ The following properties are optional:
 Tokenization
 ------------
 
-To avoid sending the full PAN to Kill Bill, your front-end application should tokenize first the card in Qualpay using the [Add a Customer](https://www.qualpay.com/developer/api/customer-vault/add-a-customer) Vault API.
+To avoid sending the full PAN to Kill Bill, your front-end application should tokenize first the card in Qualpay using either the [Add a Customer](https://www.qualpay.com/developer/api/customer-vault/add-a-customer) Vault API (recommended) or [Tokenize Card](https://www.qualpay.com/developer/api/payment-gateway/tokenize-card) API. The Vault API is recommended as some functionality (such as retrieving the payment method details from Qualpay or deleting the card in Qualpay) won't be available when using the Gateway API.
 
-Qualpay will return a customer id that needs to be set as a the custom field `QUALPAY_CUSTOMER_ID` on the Kill Bill account. You can then trigger a [refresh](https://killbill.github.io/slate/#account-refresh-account-payment-methods) to sync back all card in the Vault to Kill Bill.
+When using the Vault API, Qualpay will return a customer id that needs to be set as a the custom field `QUALPAY_CUSTOMER_ID` on the Kill Bill account. You can then trigger a [refresh](https://killbill.github.io/slate/#account-refresh-account-payment-methods) to sync back all cards in the Vault to Kill Bill.
+
+When using the Payment Gateway API, you need to [add the payment method](https://killbill.github.io/slate/#account-add-a-payment-method) directly by passing the card id as the `card_id` plugin property.
 
 Migration
 ---------
 
-When migrating to Kill Bill, you need to create one Kill Bill account for each of your customers and set the `QUALPAY_CUSTOMER_ID` custom field. Similar to the tokenization step above, you must then trigger a refresh of the payment methods for each account.
+To migrate to Kill Bill, you first need to create one Kill Bill account for each of your customers and follow the tokenization step(s) above for each account.
 
 Development
 -----------

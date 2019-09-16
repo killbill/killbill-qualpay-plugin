@@ -36,6 +36,7 @@ import org.killbill.billing.plugin.TestUtils;
 import org.killbill.billing.plugin.api.PluginProperties;
 import org.killbill.billing.plugin.api.core.PluginCustomField;
 import org.killbill.billing.plugin.api.payment.PluginPaymentMethodPlugin;
+import org.killbill.billing.plugin.qualpay.client.PGApi;
 import org.killbill.billing.util.api.CustomFieldApiException;
 import org.killbill.billing.util.customfield.CustomField;
 import org.testng.annotations.Test;
@@ -179,7 +180,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
     }
 
     @Test(groups = "slow")
-    public void testSuccessfulAuthVoid() throws PaymentPluginApiException, ApiException, PaymentApiException {
+    public void testSuccessfulAuthVoid() throws PaymentPluginApiException, PaymentApiException {
         final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
 
         final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
@@ -206,7 +207,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
     }
 
     @Test(groups = "slow")
-    public void testSuccessfulPurchaseRefund() throws PaymentPluginApiException, ApiException, PaymentApiException {
+    public void testSuccessfulPurchaseRefund() throws PaymentPluginApiException, PaymentApiException {
         final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
 
         final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
@@ -237,7 +238,7 @@ public class TestQualpayPaymentPluginApi extends TestBase {
     }
 
     @Test(groups = "slow")
-    public void testSuccessfulPurchaseMultiplePartialRefunds() throws PaymentPluginApiException, ApiException, PaymentApiException {
+    public void testSuccessfulPurchaseMultiplePartialRefunds() throws PaymentPluginApiException, PaymentApiException {
         final UUID kbPaymentMethodId = createQualpayCustomerWithCreditCardAndReturnKBPaymentMethodId();
 
         final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
@@ -315,6 +316,42 @@ public class TestQualpayPaymentPluginApi extends TestBase {
         assertEquals(paymentTransactionInfoPlugin4.size(), 4);
     }
 
+    @Test(groups = "slow")
+    public void testVerifyAddPaymentMethodPurchaseNoVault() throws PaymentPluginApiException, ApiException, PaymentApiException {
+        // Directly tokenize the card
+        final String cardId = tokenizeCreditCard();
+
+        final UUID kbAccountId = account.getId();
+        assertEquals(qualpayPaymentPluginApi.getPaymentMethods(kbAccountId, false, ImmutableList.<PluginProperty>of(), context).size(), 0);
+
+        // Add the payment method
+        final UUID kbPaymentMethodId = UUID.randomUUID();
+        qualpayPaymentPluginApi.addPaymentMethod(kbAccountId,
+                                                 kbPaymentMethodId,
+                                                 new PluginPaymentMethodPlugin(kbPaymentMethodId, null, false, ImmutableList.<PluginProperty>of()),
+                                                 false,
+                                                 PluginProperties.buildPluginProperties(ImmutableMap.of("card_id", cardId)),
+                                                 context);
+        final List<PaymentMethodInfoPlugin> paymentMethods = qualpayPaymentPluginApi.getPaymentMethods(kbAccountId, false, ImmutableList.<PluginProperty>of(), context);
+        assertEquals(paymentMethods.size(), 1);
+        assertEquals(paymentMethods.get(0).getAccountId(), kbAccountId);
+        assertEquals(paymentMethods.get(0).getExternalPaymentMethodId(), cardId);
+
+        // Verify the card id can be used
+        final Payment payment = TestUtils.buildPayment(account.getId(), account.getPaymentMethodId(), account.getCurrency(), killbillApi);
+        final PaymentTransaction purchaseTransaction = TestUtils.buildPaymentTransaction(payment, TransactionType.PURCHASE, BigDecimal.TEN, payment.getCurrency());
+        final PaymentTransactionInfoPlugin purchaseInfoPlugin = qualpayPaymentPluginApi.purchasePayment(account.getId(),
+                                                                                                        payment.getId(),
+                                                                                                        purchaseTransaction.getId(),
+                                                                                                        paymentMethods.get(0).getPaymentMethodId(),
+                                                                                                        purchaseTransaction.getAmount(),
+                                                                                                        purchaseTransaction.getCurrency(),
+                                                                                                        ImmutableList.of(),
+                                                                                                        context);
+        TestUtils.updatePaymentTransaction(purchaseTransaction, purchaseInfoPlugin);
+        verifyPaymentTransactionInfoPlugin(payment, purchaseTransaction, purchaseInfoPlugin, PaymentPluginStatus.PROCESSED);
+    }
+
     private void verifyPaymentTransactionInfoPlugin(final Payment payment,
                                                     final PaymentTransaction paymentTransaction,
                                                     final PaymentTransactionInfoPlugin paymentTransactionInfoPlugin,
@@ -378,5 +415,20 @@ public class TestQualpayPaymentPluginApi extends TestBase {
                                                  context);
 
         return customFieldUserApi.getCustomFieldsForAccountType(kbAccountId, ObjectType.ACCOUNT, context).get(0).getFieldValue();
+    }
+
+    private String tokenizeCreditCard() throws ApiException {
+        final AddBillingCardRequest billingCardsItem = new AddBillingCardRequest();
+        billingCardsItem.setCardNumber("4111111111111111");
+        billingCardsItem.setExpDate("0420");
+        billingCardsItem.setCvv2("152");
+        billingCardsItem.setBillingFirstName("John");
+        billingCardsItem.setBillingLastName("Doe");
+        billingCardsItem.setBillingZip("94402");
+        billingCardsItem.setMerchantId(qualpayPaymentPluginApi.getMerchantId(context));
+
+        final ApiClient apiClient = qualpayPaymentPluginApi.buildApiClient(context, true);
+        final PGApi pgApi = new PGApi(apiClient);
+        return pgApi.tokenize(billingCardsItem).getCardId();
     }
 }

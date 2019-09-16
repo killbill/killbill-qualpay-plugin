@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.reflect.TypeToken;
+import io.swagger.client.model.AddBillingCardRequest;
 import io.swagger.client.model.GatewayResponse;
 import qpPlatform.ApiClient;
 import qpPlatform.ApiException;
@@ -38,6 +39,10 @@ public class PGApi {
     public PGApi(final ApiClient apiClient) {
         this.apiClient = apiClient;
         this.apiClient.setBasePath(apiClient.getBasePath().replace("/platform", ""));
+    }
+
+    public GatewayResponse tokenize(final AddBillingCardRequest body) throws ApiException {
+        return createPGTransactionWithHttpInfo("/pg/tokenize", body);
     }
 
     public GatewayResponse authorize(final PGApiTransactionRequest body) throws ApiException {

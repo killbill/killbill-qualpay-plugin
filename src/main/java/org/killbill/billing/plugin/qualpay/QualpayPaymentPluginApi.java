@@ -130,15 +130,20 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                  final Iterable<PluginProperty> properties,
                                  final CallContext context) throws PaymentPluginApiException {
         final String qualpayCustomerIdMaybeNull = getCustomerIdNoException(kbAccountId, context);
+        final String cardIdMaybeNull = PluginProperties.findPluginPropertyValue("card_id", properties);
 
         final String qualpayId;
         if (qualpayCustomerIdMaybeNull != null && paymentMethodProps.getExternalPaymentMethodId() != null) {
             // The customer and payment method already exist (sync code path), we just need to update our tables
             qualpayId = paymentMethodProps.getExternalPaymentMethodId();
         } else if (qualpayCustomerIdMaybeNull == null && paymentMethodProps.getExternalPaymentMethodId() != null) {
+            // Invalid sync path
             throw new PaymentPluginApiException("USER", "Specified Qualpay card id but missing QUALPAY_CUSTOMER_ID custom field");
+        } else if (cardIdMaybeNull != null) {
+            // Card was tokenized via the Payment Gateway API - we will simply store the card locally
+            qualpayId = cardIdMaybeNull;
         } else {
-            // We need to create a new payment method, either on a new customer or on an existing one
+            // We need to create a new payment method, either on a new customer or on an existing one (for testing or for companies with a tokenization proxy)
             final ApiClient apiClient = buildApiClient(context, true);
             final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
 
@@ -441,7 +446,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
 
     private abstract static class TransactionExecutor<T> {
 
-        public T execute(final Account account, final QualpayPaymentMethodsRecord paymentMethodsRecord) throws ApiException {
+        public T execute(final Account account, final QualpayPaymentMethodsRecord paymentMethodsRecord) throws ApiException, SQLException {
             throw new UnsupportedOperationException();
 
         }
@@ -460,11 +465,10 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                                    final Currency currency,
                                                                    final Iterable<PluginProperty> properties,
                                                                    final CallContext context) throws PaymentPluginApiException {
-        final String customerId = getCustomerIdNoException(kbAccountId, context);
         return executeInitialTransaction(transactionType,
                                          new TransactionExecutor<GatewayResponse>() {
                                              @Override
-                                             public GatewayResponse execute(final Account account, final QualpayPaymentMethodsRecord paymentMethodsRecord) throws ApiException {
+                                             public GatewayResponse execute(final Account account, final QualpayPaymentMethodsRecord paymentMethodsRecord) throws ApiException, SQLException {
                                                  final ApiClient apiClient = buildApiClient(context, false);
                                                  final PGApi pgApi = new PGApi(apiClient);
 
@@ -472,14 +476,9 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                  pgApiTransactionRequest.setMerchantId(getMerchantId(context));
                                                  pgApiTransactionRequest.setAmtTran(amount.doubleValue());
                                                  pgApiTransactionRequest.setTranCurrency(CurrencyUnit.of(currency.toString()).getNumeric3Code());
-                                                 if (customerId != null) {
-                                                     pgApiTransactionRequest.setCustomerId(customerId);
-                                                 } else {
-                                                     // TODO Implement non-Vault path
-                                                     pgApiTransactionRequest.setTokenize(true);
-                                                     pgApiTransactionRequest.setCardId(null);
-                                                     pgApiTransactionRequest.setAvsZip(null);
-                                                 }
+
+                                                 final QualpayPaymentMethodsRecord paymentMethod = dao.getPaymentMethod(kbPaymentMethodId, context.getTenantId());
+                                                 pgApiTransactionRequest.setCardId(paymentMethod.getQualpayId());
 
                                                  final List<PGApiLineItem> lineItems = new ArrayList<PGApiLineItem>(1);
                                                  final PGApiLineItem lineItem = new PGApiLineItem();
@@ -535,6 +534,8 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                 response = transactionExecutor.execute(account, nonNullPaymentMethodsRecord);
             } catch (final ApiException e) {
                 throw new PaymentPluginApiException("Error connecting to Qualpay", e);
+            } catch (final SQLException e) {
+                throw new PaymentPluginApiException("Unable to submit payment, we encountered a database error", e);
             }
         }
 
@@ -590,7 +591,8 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
         }
     }
 
-    private Long getMerchantId(final TenantContext context) {
+    @VisibleForTesting
+    Long getMerchantId(final TenantContext context) {
         final QualpayConfigProperties qualpayConfigProperties = qualpayConfigPropertiesConfigurationHandler.getConfigurable(context.getTenantId());
         return Long.valueOf(MoreObjects.firstNonNull(qualpayConfigProperties.getMerchantId(), "0"));
     }
