@@ -39,6 +39,12 @@
         <system>Github</system>
         <url>https://github.com/killbill/killbill-qualpay-plugin/issues</url>
     </issueManagement>
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/killbill/*</url>
+        </repository>
+    </repositories>
     <properties>
     </properties>
     <dependencies>
