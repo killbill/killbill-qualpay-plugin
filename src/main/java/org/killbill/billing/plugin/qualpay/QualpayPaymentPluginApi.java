@@ -20,9 +20,11 @@ package org.killbill.billing.plugin.qualpay;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -34,7 +36,6 @@ import org.killbill.billing.account.api.Account;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.osgi.libs.killbill.OSGIConfigPropertiesService;
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillAPI;
-import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
 import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PaymentMethodPlugin;
 import org.killbill.billing.payment.api.PluginProperty;
@@ -68,8 +69,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
 import io.swagger.client.api.CustomerVaultApi;
 import io.swagger.client.model.AddBillingCardRequest;
 import io.swagger.client.model.AddCustomerRequest;
@@ -96,10 +95,9 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
     public QualpayPaymentPluginApi(final QualpayConfigPropertiesConfigurationHandler qualpayConfigPropertiesConfigurationHandler,
                                    final OSGIKillbillAPI killbillAPI,
                                    final OSGIConfigPropertiesService configProperties,
-                                   final OSGIKillbillLogService logService,
                                    final Clock clock,
                                    final QualpayDao dao) {
-        super(killbillAPI, configProperties, logService, clock, dao);
+        super(killbillAPI, configProperties, clock, dao);
         this.qualpayConfigPropertiesConfigurationHandler = qualpayConfigPropertiesConfigurationHandler;
         this.dao = dao;
     }
@@ -182,7 +180,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                     try {
                         final QualpayConfigProperties qualpayConfigProperties = qualpayConfigPropertiesConfigurationHandler.getConfigurable(context.getTenantId());
                         killbillAPI.getSecurityApi().login(qualpayConfigProperties.getKbUsername(), qualpayConfigProperties.getKbPassword());
-                        killbillAPI.getCustomFieldUserApi().addCustomFields(ImmutableList.<CustomField>of(customField), context);
+                        killbillAPI.getCustomFieldUserApi().addCustomFields(List.of(customField), context);
                     } finally {
                         killbillAPI.getSecurityApi().logout();
                     }
@@ -306,7 +304,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                              QualpayActivator.PLUGIN_NAME,
                                                              false,
                                                              paymentMethodInfo,
-                                                             ImmutableList.<PluginProperty>of(),
+                                                             Collections.emptyList(),
                                                              context);
             } else {
                 logger.info("Updating existing local Qualpay payment method {}", billingCard);
@@ -333,7 +331,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                   final ApiClient apiClient = buildApiClient(context, false);
                                                   final PGApi pgApi = new PGApi(apiClient);
 
-                                                  final Map additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
+                                                  final Map<?, ?> additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
                                                   final String pgId = (String) additionalData.get("id");
 
                                                   final PGApiCaptureRequest captureRequest = new PGApiRefundRequest();
@@ -367,7 +365,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                   final ApiClient apiClient = buildApiClient(context, false);
                                                   final PGApi pgApi = new PGApi(apiClient);
 
-                                                  final Map additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
+                                                  final Map<?, ?> additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
                                                   final String pgId = (String) additionalData.get("id");
 
                                                   final PGApiVoidRequest voidRequest = new PGApiVoidRequest();
@@ -400,7 +398,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                                   final ApiClient apiClient = buildApiClient(context, false);
                                                   final PGApi pgApi = new PGApi(apiClient);
 
-                                                  final Map additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
+                                                  final Map<?, ?> additionalData = QualpayDao.fromAdditionalData(previousResponse.getAdditionalData());
                                                   final String pgId = (String) additionalData.get("id");
 
                                                   final PGApiRefundRequest refundRequest = new PGApiRefundRequest();
@@ -594,7 +592,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
     @VisibleForTesting
     Long getMerchantId(final TenantContext context) {
         final QualpayConfigProperties qualpayConfigProperties = qualpayConfigPropertiesConfigurationHandler.getConfigurable(context.getTenantId());
-        return Long.valueOf(MoreObjects.firstNonNull(qualpayConfigProperties.getMerchantId(), "0"));
+        return Long.valueOf(Objects.requireNonNullElse(qualpayConfigProperties.getMerchantId(), "0"));
     }
 
     private String getCustomerId(final UUID kbAccountId, final CallContext context) throws PaymentPluginApiException {
@@ -628,7 +626,7 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
             }
         }
 
-        return MoreObjects.firstNonNull(paymentMethodsRecord, emptyRecord(kbPaymentMethodId));
+        return Objects.requireNonNullElse(paymentMethodsRecord, emptyRecord(kbPaymentMethodId));
     }
 
     private QualpayPaymentMethodsRecord emptyRecord(@Nullable final UUID kbPaymentMethodId) {

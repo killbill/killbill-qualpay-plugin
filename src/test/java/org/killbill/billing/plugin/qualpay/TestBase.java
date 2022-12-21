@@ -17,7 +17,6 @@
 
 package org.killbill.billing.plugin.qualpay;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -27,7 +26,6 @@ import org.killbill.billing.account.api.Account;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.osgi.libs.killbill.OSGIConfigPropertiesService;
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillAPI;
-import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
 import org.killbill.billing.payment.api.PaymentMethodPlugin;
 import org.killbill.billing.plugin.TestUtils;
 import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
@@ -80,18 +78,16 @@ public class TestBase {
 
         TestUtils.buildPaymentMethod(account.getId(), account.getPaymentMethodId(), QualpayActivator.PLUGIN_NAME, killbillApi);
 
-        final OSGIKillbillLogService logService = TestUtils.buildLogService();
         final Properties properties = TestUtils.loadProperties(PROPERTIES_FILE_NAME);
 
         final QualpayConfigProperties qualpayConfigProperties = new QualpayConfigProperties(properties, "");
-        qualpayConfigPropertiesConfigurationHandler = new QualpayConfigPropertiesConfigurationHandler(QualpayActivator.PLUGIN_NAME, killbillApi, logService, null);
+        qualpayConfigPropertiesConfigurationHandler = new QualpayConfigPropertiesConfigurationHandler(QualpayActivator.PLUGIN_NAME, killbillApi, null);
         qualpayConfigPropertiesConfigurationHandler.setDefaultConfigurable(qualpayConfigProperties);
 
         final OSGIConfigPropertiesService configPropertiesService = Mockito.mock(OSGIConfigPropertiesService.class);
         qualpayPaymentPluginApi = new QualpayPaymentPluginApi(qualpayConfigPropertiesConfigurationHandler,
                                                             killbillApi,
                                                             configPropertiesService,
-                                                            logService,
                                                             clock,
                                                             dao);
 

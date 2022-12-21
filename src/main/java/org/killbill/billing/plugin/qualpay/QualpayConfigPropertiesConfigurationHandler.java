@@ -20,19 +20,15 @@ package org.killbill.billing.plugin.qualpay;
 import java.util.Properties;
 
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillAPI;
-import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
 import org.killbill.billing.plugin.api.notification.PluginTenantConfigurableConfigurationHandler;
 
 public class QualpayConfigPropertiesConfigurationHandler extends PluginTenantConfigurableConfigurationHandler<QualpayConfigProperties> {
 
     private final String region;
 
-    public QualpayConfigPropertiesConfigurationHandler(final String pluginName,
-                                                       final OSGIKillbillAPI osgiKillbillAPI,
-                                                       final OSGIKillbillLogService osgiKillbillLogService,
-                                                       final String region) {
+    public QualpayConfigPropertiesConfigurationHandler(final String pluginName, final OSGIKillbillAPI osgiKillbillAPI, final String region) {
         // -plugin required for Kaui?
-        super(pluginName + "-plugin", osgiKillbillAPI, osgiKillbillLogService);
+        super(pluginName + "-plugin", osgiKillbillAPI);
         this.region = region;
     }
 
