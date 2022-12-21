@@ -118,3 +118,4 @@ buildNumber.properties
 logs/
 .logs
 src/test/resources/qualpay.properties
+/settings.xml
