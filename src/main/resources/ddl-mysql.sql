@@ -1,6 +1,5 @@
-/*! SET storage_engine=INNODB */;
-
 drop table if exists qualpay_responses;
+
 create table qualpay_responses (
   record_id serial
 , kb_account_id char(36) not null
