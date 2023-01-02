@@ -40,10 +40,7 @@ public class QualpayActivator extends KillbillActivatorBase {
         final QualpayDao qualpayDao = new QualpayDao(dataSource.getDataSource());
 
         final String region = PluginEnvironmentConfig.getRegion(configProperties.getProperties());
-        qualpayConfigPropertiesConfigurationHandler = new QualpayConfigPropertiesConfigurationHandler(PLUGIN_NAME,
-                                                                                                      killbillAPI,
-                                                                                                      logService,
-                                                                                                      region);
+        qualpayConfigPropertiesConfigurationHandler = new QualpayConfigPropertiesConfigurationHandler(PLUGIN_NAME, killbillAPI, region);
 
         final QualpayConfigProperties qualpayConfigProperties = qualpayConfigPropertiesConfigurationHandler.createConfigurable(configProperties.getProperties());
         qualpayConfigPropertiesConfigurationHandler.setDefaultConfigurable(qualpayConfigProperties);
@@ -52,7 +49,6 @@ public class QualpayActivator extends KillbillActivatorBase {
         final PaymentPluginApi pluginApi = new QualpayPaymentPluginApi(qualpayConfigPropertiesConfigurationHandler,
                                                                        killbillAPI,
                                                                        configProperties,
-                                                                       logService,
                                                                        clock.getClock(),
                                                                        qualpayDao);
         registerPaymentPluginApi(context, pluginApi);
@@ -66,7 +62,7 @@ public class QualpayActivator extends KillbillActivatorBase {
     }
 
     private void registerPaymentPluginApi(final BundleContext context, final PaymentPluginApi api) {
-        final Hashtable<String, String> props = new Hashtable<String, String>();
+        final Hashtable<String, String> props = new Hashtable<>();
         props.put(OSGIPluginProperties.PLUGIN_NAME_PROP, PLUGIN_NAME);
         registrar.registerService(context, PaymentPluginApi.class, api, props);
     }

@@ -18,14 +18,15 @@
 package org.killbill.billing.plugin.qualpay;
 
 import java.math.BigDecimal;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
 
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionType;
@@ -36,8 +37,6 @@ import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
 import org.killbill.billing.plugin.qualpay.dao.gen.tables.records.QualpayResponsesRecord;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSet.Builder;
 
 public class QualpayPaymentTransactionInfoPlugin extends PluginPaymentTransactionInfoPlugin {
 
@@ -45,17 +44,17 @@ public class QualpayPaymentTransactionInfoPlugin extends PluginPaymentTransactio
     private static final int ERROR_CODE_MAX_LENGTH = 32;
 
     // See https://www.qualpay.com/developer/api/reference#api-response-codes
-    private static final ImmutableSet<String> PLUGIN_FAILURE_CODES = new Builder<String>().add("100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "114", "115", "116", "117", "118", "119", "404", "405").build();
-    private static final ImmutableSet<String> PAYMENT_FAILURE_CODES = new Builder<String>().add("113", "401", "402", "403").build();
+    private static final Set<String> PLUGIN_FAILURE_CODES = Set.of("100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "114", "115", "116", "117", "118", "119", "404", "405");
+    private static final Set<String> PAYMENT_FAILURE_CODES = Set.of("113", "401", "402", "403");
 
     private final QualpayResponsesRecord qualpayResponseRecord;
 
     public static QualpayPaymentTransactionInfoPlugin build(final QualpayResponsesRecord qualpayResponsesRecord) {
-        final Map additionalData = QualpayDao.fromAdditionalData(qualpayResponsesRecord.getAdditionalData());
+        final Map<?, ?> additionalData = QualpayDao.fromAdditionalData(qualpayResponsesRecord.getAdditionalData());
         final String firstPaymentReferenceId = (String) additionalData.get("id");
         final String secondPaymentReferenceId = (String) additionalData.get("auth_code");
 
-        final DateTime responseDate = new DateTime(qualpayResponsesRecord.getCreatedDate(), DateTimeZone.UTC);
+        final DateTime responseDate = new DateTime(qualpayResponsesRecord.getCreatedDate().toEpochSecond(ZoneOffset.UTC));
 
         return new QualpayPaymentTransactionInfoPlugin(qualpayResponsesRecord,
                                                        UUID.fromString(qualpayResponsesRecord.getKbPaymentId()),
@@ -73,7 +72,7 @@ public class QualpayPaymentTransactionInfoPlugin extends PluginPaymentTransactio
                                                        PluginProperties.buildPluginProperties(additionalData));
     }
 
-    private static PaymentPluginStatus getPaymentPluginStatus(final Map additionalData) {
+    private static PaymentPluginStatus getPaymentPluginStatus(final Map<?, ?> additionalData) {
         final String overriddenTransactionStatus = (String) additionalData.get(QualpayPaymentPluginApi.PROPERTY_OVERRIDDEN_TRANSACTION_STATUS);
         if (overriddenTransactionStatus != null) {
             return PaymentPluginStatus.valueOf(overriddenTransactionStatus);
@@ -91,11 +90,11 @@ public class QualpayPaymentTransactionInfoPlugin extends PluginPaymentTransactio
         }
     }
 
-    private static String getGatewayError(final Map additionalData) {
+    private static String getGatewayError(final Map<?, ?> additionalData) {
         return (String) additionalData.get("rmsg");
     }
 
-    private static String getGatewayErrorCode(final Map additionalData) {
+    private static String getGatewayErrorCode(final Map<?, ?> additionalData) {
         return (String) additionalData.get("rcode");
     }
 

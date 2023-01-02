@@ -29,6 +29,7 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 
 import org.joda.time.DateTime;
+import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.payment.api.PluginProperty;
@@ -83,8 +84,8 @@ public class QualpayDao extends PluginPaymentDao<QualpayResponsesRecord, Qualpay
                                    qualpayId,
                                    (short) FALSE,
                                    asString(additionalDataMap),
-                                   toTimestamp(utcNow),
-                                   toTimestamp(utcNow),
+                                   toLocalDateTime(utcNow),
+                                   toLocalDateTime(utcNow),
                                    kbTenantId.toString())
                            .execute();
 
@@ -105,7 +106,7 @@ public class QualpayDao extends PluginPaymentDao<QualpayResponsesRecord, Qualpay
                         DSL.using(conn, dialect, settings)
                            .update(QUALPAY_PAYMENT_METHODS)
                            .set(QUALPAY_PAYMENT_METHODS.ADDITIONAL_DATA, asString(additionalDataMap))
-                           .set(QUALPAY_PAYMENT_METHODS.UPDATED_DATE, toTimestamp(utcNow))
+                           .set(QUALPAY_PAYMENT_METHODS.UPDATED_DATE, toLocalDateTime(utcNow))
                            .where(QUALPAY_PAYMENT_METHODS.KB_PAYMENT_METHOD_ID.equal(kbPaymentMethodId.toString()))
                            .and(QUALPAY_PAYMENT_METHODS.QUALPAY_ID.equal(qualpayId))
                            .and(QUALPAY_PAYMENT_METHODS.KB_TENANT_ID.equal(kbTenantId.toString()))
@@ -128,36 +129,35 @@ public class QualpayDao extends PluginPaymentDao<QualpayResponsesRecord, Qualpay
                                               final UUID kbTenantId) throws SQLException {
         final Map<String, Object> additionalDataMap = QualpayPluginProperties.toAdditionalDataMap(gatewayResponse);
 
-        return execute(dataSource.getConnection(),
-                       new WithConnectionCallback<QualpayResponsesRecord>() {
-                           @Override
-                           public QualpayResponsesRecord withConnection(final Connection conn) throws SQLException {
-                               return DSL.using(conn, dialect, settings)
-                                         .insertInto(QUALPAY_RESPONSES,
-                                                     QUALPAY_RESPONSES.KB_ACCOUNT_ID,
-                                                     QUALPAY_RESPONSES.KB_PAYMENT_ID,
-                                                     QUALPAY_RESPONSES.KB_PAYMENT_TRANSACTION_ID,
-                                                     QUALPAY_RESPONSES.TRANSACTION_TYPE,
-                                                     QUALPAY_RESPONSES.AMOUNT,
-                                                     QUALPAY_RESPONSES.CURRENCY,
-                                                     QUALPAY_RESPONSES.QUALPAY_ID,
-                                                     QUALPAY_RESPONSES.ADDITIONAL_DATA,
-                                                     QUALPAY_RESPONSES.CREATED_DATE,
-                                                     QUALPAY_RESPONSES.KB_TENANT_ID)
-                                         .values(kbAccountId.toString(),
-                                                 kbPaymentId.toString(),
-                                                 kbPaymentTransactionId.toString(),
-                                                 transactionType.toString(),
-                                                 amount,
-                                                 currency == null ? null : currency.name(),
-                                                 gatewayResponse.getPgId(),
-                                                 asString(additionalDataMap),
-                                                 toTimestamp(utcNow),
-                                                 kbTenantId.toString())
-                                         .returning()
-                                         .fetchOne();
-                           }
-                       });
+        return execute(dataSource.getConnection(), conn ->
+            DSL.using(conn, dialect, settings).transactionResult(configuration -> {
+                final DSLContext dslContext = DSL.using(configuration);
+                dslContext.insertInto(QUALPAY_RESPONSES,
+                                      QUALPAY_RESPONSES.KB_ACCOUNT_ID,
+                                      QUALPAY_RESPONSES.KB_PAYMENT_ID,
+                                      QUALPAY_RESPONSES.KB_PAYMENT_TRANSACTION_ID,
+                                      QUALPAY_RESPONSES.TRANSACTION_TYPE,
+                                      QUALPAY_RESPONSES.AMOUNT,
+                                      QUALPAY_RESPONSES.CURRENCY,
+                                      QUALPAY_RESPONSES.QUALPAY_ID,
+                                      QUALPAY_RESPONSES.ADDITIONAL_DATA,
+                                      QUALPAY_RESPONSES.CREATED_DATE,
+                                      QUALPAY_RESPONSES.KB_TENANT_ID)
+                          .values(kbAccountId.toString(),
+                                  kbPaymentId.toString(),
+                                  kbPaymentTransactionId.toString(),
+                                  transactionType.toString(),
+                                  amount,
+                                  currency == null ? null : currency.name(),
+                                  gatewayResponse.getPgId(),
+                                  asString(additionalDataMap),
+                                  toLocalDateTime(utcNow),
+                                  kbTenantId.toString())
+                          .execute();
+                return dslContext.fetchOne(
+                        QUALPAY_RESPONSES,
+                        QUALPAY_RESPONSES.RECORD_ID.eq(QUALPAY_RESPONSES.RECORD_ID.getDataType().convert(dslContext.lastID())));
+            }));
     }
 
     public QualpayResponsesRecord updateResponse(final UUID kbPaymentTransactionId,
