@@ -127,8 +127,10 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                                  final boolean setDefault,
                                  final Iterable<PluginProperty> properties,
                                  final CallContext context) throws PaymentPluginApiException {
+    	final Iterable<PluginProperty> allProperties = PluginProperties.merge(paymentMethodProps.getProperties(),
+				properties);
         final String qualpayCustomerIdMaybeNull = getCustomerIdNoException(kbAccountId, context);
-        final String cardIdMaybeNull = PluginProperties.findPluginPropertyValue("card_id", properties);
+        final String cardIdMaybeNull = PluginProperties.findPluginPropertyValue("card_id", allProperties);
 
         final String qualpayId;
         if (qualpayCustomerIdMaybeNull != null && paymentMethodProps.getExternalPaymentMethodId() != null) {
@@ -146,13 +148,13 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
             final CustomerVaultApi customerVaultApi = new CustomerVaultApi(apiClient);
 
             final AddBillingCardRequest billingCardsItem = new AddBillingCardRequest();
-            billingCardsItem.setCardNumber(PluginProperties.findPluginPropertyValue("card_number", properties));
-            billingCardsItem.setExpDate(PluginProperties.findPluginPropertyValue("exp_date", properties));
-            billingCardsItem.setCvv2(PluginProperties.findPluginPropertyValue("cvv2", properties));
-            billingCardsItem.setBillingFirstName(PluginProperties.findPluginPropertyValue("billing_first_name", properties));
-            billingCardsItem.setBillingLastName(PluginProperties.findPluginPropertyValue("billing_last_name", properties));
-            billingCardsItem.setBillingFirmName(PluginProperties.findPluginPropertyValue("billing_firm_name", properties));
-            billingCardsItem.setBillingZip(PluginProperties.findPluginPropertyValue("billing_zip", properties));
+            billingCardsItem.setCardNumber(PluginProperties.findPluginPropertyValue("card_number", allProperties));
+            billingCardsItem.setExpDate(PluginProperties.findPluginPropertyValue("exp_date", allProperties));
+            billingCardsItem.setCvv2(PluginProperties.findPluginPropertyValue("cvv2", allProperties));
+            billingCardsItem.setBillingFirstName(PluginProperties.findPluginPropertyValue("billing_first_name", allProperties));
+            billingCardsItem.setBillingLastName(PluginProperties.findPluginPropertyValue("billing_last_name", allProperties));
+            billingCardsItem.setBillingFirmName(PluginProperties.findPluginPropertyValue("billing_firm_name", allProperties));
+            billingCardsItem.setBillingZip(PluginProperties.findPluginPropertyValue("billing_zip", allProperties));
 
             try {
                 if (qualpayCustomerIdMaybeNull == null) {
@@ -160,11 +162,11 @@ public class QualpayPaymentPluginApi extends PluginPaymentPluginApi<QualpayRespo
                     final AddCustomerRequest addCustomerRequest = new AddCustomerRequest();
                     addCustomerRequest.setAutoGenerateCustomerId(true);
                     addCustomerRequest.addBillingCardsItem(billingCardsItem);
-                    final String customerFirstName = PluginProperties.findPluginPropertyValue("customer_first_name", properties);
+                    final String customerFirstName = PluginProperties.findPluginPropertyValue("customer_first_name", allProperties);
                     addCustomerRequest.setCustomerFirstName(customerFirstName != null ? customerFirstName : billingCardsItem.getBillingFirstName());
-                    final String customerLastName = PluginProperties.findPluginPropertyValue("customer_last_name", properties);
+                    final String customerLastName = PluginProperties.findPluginPropertyValue("customer_last_name", allProperties);
                     addCustomerRequest.setCustomerLastName(customerLastName != null ? customerLastName : billingCardsItem.getBillingLastName());
-                    final String customerFirmName = PluginProperties.findPluginPropertyValue("customer_firm_name", properties);
+                    final String customerFirmName = PluginProperties.findPluginPropertyValue("customer_firm_name", allProperties);
                     addCustomerRequest.setCustomerFirmName(customerFirmName != null ? customerFirmName : billingCardsItem.getBillingFirmName());
                     final CustomerVault customerVault = customerVaultApi.addCustomer(addCustomerRequest).getData();
                     // TODO Guaranteed it's the last one?
