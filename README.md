@@ -11,11 +11,12 @@ Kill Bill compatibility
 | Plugin version | Kill Bill version |
 | -------------: | ----------------: |
 | 0.0.y          | 0.22.z            |
+| 1.0.y          | 0.24.z            |
 
 Requirements
 ------------
 
-The plugin needs a database. The latest version of the schema can be found[here](https://github.com/killbill/killbill-qualpay-plugin/blob/master/src/main/resources): You can pick between MySQL or Postgresql.
+The plugin needs a database. The latest version of the schema can be found [here](https://github.com/killbill/killbill-qualpay-plugin/blob/master/src/main/resources): You can pick between MySQL or Postgresql.
 
 Configuration
 -------------
