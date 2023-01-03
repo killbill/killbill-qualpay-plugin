@@ -204,6 +204,22 @@
             <artifactId>mysql-connector-java</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooby</groupId>
+            <artifactId>jooby</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -242,6 +258,7 @@
                         <!-- Optional resolution because exported by the Felix system bundle -->
                         <Import-Package>
                             org.joda.time;
+                            org.joda.time.format;
                             org.killbill.billing.account.api;
                             org.killbill.billing.catalog.api;
                             org.killbill.billing.invoice.api;

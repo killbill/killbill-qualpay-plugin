@@ -19,11 +19,17 @@ package org.killbill.billing.plugin.qualpay;
 
 import java.util.Hashtable;
 
+import javax.servlet.Servlet;
+import javax.servlet.http.HttpServlet;
+
+import org.killbill.billing.osgi.api.Healthcheck;
 import org.killbill.billing.osgi.api.OSGIPluginProperties;
 import org.killbill.billing.osgi.libs.killbill.KillbillActivatorBase;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApi;
 import org.killbill.billing.plugin.api.notification.PluginConfigurationEventHandler;
 import org.killbill.billing.plugin.core.config.PluginEnvironmentConfig;
+import org.killbill.billing.plugin.core.resources.jooby.PluginApp;
+import org.killbill.billing.plugin.core.resources.jooby.PluginAppBuilder;
 import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
 import org.osgi.framework.BundleContext;
 
@@ -53,6 +59,18 @@ public class QualpayActivator extends KillbillActivatorBase {
                                                                        qualpayDao);
         registerPaymentPluginApi(context, pluginApi);
 
+        // Expose a healthcheck, so other plugins can check on the plugin status
+        final Healthcheck healthcheck = new QualpayHealthcheck(qualpayConfigPropertiesConfigurationHandler);
+        registerHealthcheck(context, healthcheck);
+
+        // Register a servlet
+        final PluginApp pluginApp = new PluginAppBuilder(PLUGIN_NAME, killbillAPI, dataSource, super.clock, configProperties)
+                .withRouteClass(QualpayHealthcheckServlet.class).withService(healthcheck)
+                .withService(qualpayConfigPropertiesConfigurationHandler)
+                .build();
+        final HttpServlet httpServlet = PluginApp.createServlet(pluginApp);
+        registerServlet(context, httpServlet);
+
         registerHandlers();
     }
 
@@ -61,9 +79,21 @@ public class QualpayActivator extends KillbillActivatorBase {
         dispatcher.registerEventHandlers(handler);
     }
 
+    private void registerServlet(final BundleContext context, final Servlet servlet) {
+        final Hashtable<String, String> props = new Hashtable<>();
+        props.put(OSGIPluginProperties.PLUGIN_NAME_PROP, PLUGIN_NAME);
+        registrar.registerService(context, Servlet.class, servlet, props);
+    }
+
     private void registerPaymentPluginApi(final BundleContext context, final PaymentPluginApi api) {
         final Hashtable<String, String> props = new Hashtable<>();
         props.put(OSGIPluginProperties.PLUGIN_NAME_PROP, PLUGIN_NAME);
         registrar.registerService(context, PaymentPluginApi.class, api, props);
+    }
+
+    private void registerHealthcheck(final BundleContext context, final Healthcheck healthcheck) {
+        final Hashtable<String, String> props = new Hashtable<>();
+        props.put(OSGIPluginProperties.PLUGIN_NAME_PROP, PLUGIN_NAME);
+        registrar.registerService(context, Healthcheck.class, healthcheck, props);
     }
 }
