@@ -1,0 +1,18 @@
+name: ci
+
+on:
+  - push
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  ci:
+    uses: killbill/gh-actions-shared/.github/workflows/ci.yml@main
+
+  integration_test:
+    uses: killbill/gh-actions-shared/.github/workflows/integration_test.yml@main
+    with:
+      plugin_name: 'killbill-qualpay'
+      integration_tests_goal: 'test:plugins:qualpay'
+      ddl_file: 'src/main/resources/ddl-mysql.sql'
+      integration_tests_ref: 'refs/heads/master'
