@@ -63,7 +63,7 @@ public class QualpayHealthcheck implements Healthcheck {
             return HealthStatus.healthy("Qualpay OK");
         } catch (final Throwable e) {
             logger.warn("Healthcheck error", e);
-            return HealthStatus.unHealthy("Braintree error: " + e.getMessage());
+            return HealthStatus.unHealthy("Qualpay error: " + e.getMessage());
         }
     }
 }
