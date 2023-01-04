@@ -6,12 +6,11 @@ on:
   - workflow_dispatch
 
 jobs:
+  configure-maven:
+    uses: s4u/maven-settings-action@v2.2.0
+
   ci:
-    steps:
-    - name: Configure Maven
-      uses: s4u/maven-settings-action@v2.2.0    
-    - name: Checkout code
-      uses: killbill/gh-actions-shared/.github/workflows/ci.yml@main
+    uses: killbill/gh-actions-shared/.github/workflows/ci.yml@main
 
   integration_test:
     uses: killbill/gh-actions-shared/.github/workflows/integration_test.yml@main
