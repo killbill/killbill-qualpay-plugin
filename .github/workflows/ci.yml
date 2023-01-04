@@ -6,9 +6,6 @@ on:
   - workflow_dispatch
 
 jobs:
-  configure-maven:
-    uses: s4u/maven-settings-action@v2.2.0
-
   ci:
     uses: killbill/gh-actions-shared/.github/workflows/ci.yml@main
 
