@@ -27,6 +27,8 @@ import org.killbill.commons.embeddeddb.EmbeddedDB;
 import org.killbill.commons.embeddeddb.EmbeddedDB.DBEngine;
 
 public class EmbeddedDbHelper {
+	
+	private static final String DDL_FILE_NAME = "ddl-mysql.sql";
 
     private static final EmbeddedDbHelper INSTANCE = new EmbeddedDbHelper();
     private EmbeddedDB embeddedDB;
@@ -35,21 +37,24 @@ public class EmbeddedDbHelper {
         return INSTANCE;
     }
 
-    public void startDb() throws Exception {
-        embeddedDB = PlatformDBTestingHelper.get().getInstance();
+  public void startDb() throws Exception {
 
-        // Needed, otherwise get Caused by: java.sql.SQLException: No suitable driver found for jdbc:mysql:<connection-url>
-        if (embeddedDB.getDBEngine().equals(DBEngine.MYSQL)) {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        }
+      embeddedDB = PlatformDBTestingHelper.get().getInstance();
+      embeddedDB.initialize();
+      embeddedDB.start();
 
-        embeddedDB.initialize();
-        embeddedDB.start();
+      final String databaseSpecificDDL = "ddl-" + embeddedDB.getDBEngine().name().toLowerCase() + ".sql";
+      try {
+          embeddedDB.executeScript(TestUtils.toString(databaseSpecificDDL));
+      } catch (final IllegalArgumentException e) {
+      	System.out.println("exception");
+          // Ignore, no engine specific DDL
+      }
 
-        final String ddl = "ddl-" + embeddedDB.getDBEngine().name().toLowerCase() + ".sql";
-        embeddedDB.executeScript(TestUtils.toString(ddl));
-        embeddedDB.refreshTableNames();
-    }
+      final String ddl = TestUtils.toString(DDL_FILE_NAME);
+      embeddedDB.executeScript(ddl);
+      embeddedDB.refreshTableNames();
+  }
 
     public QualpayDao getQualpayDao() throws IOException, SQLException {
         return new QualpayDao(embeddedDB.getDataSource());
