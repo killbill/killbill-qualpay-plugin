@@ -28,7 +28,7 @@ import org.killbill.commons.embeddeddb.EmbeddedDB.DBEngine;
 
 public class EmbeddedDbHelper {
 	
-	private static final String DDL_FILE_NAME = "ddl-mysql.sql";
+	private static final String DDL_FILE_NAME = "ddl.sql";
 
     private static final EmbeddedDbHelper INSTANCE = new EmbeddedDbHelper();
     private EmbeddedDB embeddedDB;
@@ -47,7 +47,6 @@ public class EmbeddedDbHelper {
       try {
           embeddedDB.executeScript(TestUtils.toString(databaseSpecificDDL));
       } catch (final IllegalArgumentException e) {
-      	System.out.println("exception");
           // Ignore, no engine specific DDL
       }
 
