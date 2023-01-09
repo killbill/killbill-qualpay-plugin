@@ -24,6 +24,7 @@ import org.killbill.billing.platform.test.PlatformDBTestingHelper;
 import org.killbill.billing.plugin.TestUtils;
 import org.killbill.billing.plugin.qualpay.dao.QualpayDao;
 import org.killbill.commons.embeddeddb.EmbeddedDB;
+import org.killbill.commons.embeddeddb.EmbeddedDB.DBEngine;
 
 public class EmbeddedDbHelper {
 
@@ -39,6 +40,12 @@ public class EmbeddedDbHelper {
     public void startDb() throws Exception {
 
         embeddedDB = PlatformDBTestingHelper.get().getInstance();
+        
+        // Needed, otherwise get Caused by: java.sql.SQLException: No suitable driver found for jdbc:mysql:<connection-url>
+        if (embeddedDB.getDBEngine().equals(DBEngine.MYSQL)) {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        }
+        
         embeddedDB.initialize();
         embeddedDB.start();
 
