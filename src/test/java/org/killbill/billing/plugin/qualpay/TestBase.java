@@ -78,11 +78,8 @@ public class TestBase {
 
         TestUtils.buildPaymentMethod(account.getId(), account.getPaymentMethodId(), QualpayActivator.PLUGIN_NAME, killbillApi);
 
-        final Properties properties = TestUtils.loadProperties(PROPERTIES_FILE_NAME);
-
-        final QualpayConfigProperties qualpayConfigProperties = new QualpayConfigProperties(properties, "");
         qualpayConfigPropertiesConfigurationHandler = new QualpayConfigPropertiesConfigurationHandler(QualpayActivator.PLUGIN_NAME, killbillApi, null);
-        qualpayConfigPropertiesConfigurationHandler.setDefaultConfigurable(qualpayConfigProperties);
+        setDefaultConfigurable();
 
         final OSGIConfigPropertiesService configPropertiesService = Mockito.mock(OSGIConfigPropertiesService.class);
         qualpayPaymentPluginApi = new QualpayPaymentPluginApi(qualpayConfigPropertiesConfigurationHandler,
@@ -134,5 +131,16 @@ public class TestBase {
     @AfterSuite(groups = {"slow", "integration"})
     public void tearDownAfterSuite() throws Exception {
         EmbeddedDbHelper.instance().stopDB();
+    }
+
+    private void setDefaultConfigurable() throws Exception {
+        Properties properties = new Properties();
+        try {
+            properties = TestUtils.loadProperties(PROPERTIES_FILE_NAME);
+        } catch (final RuntimeException ignored) {
+            // Will use environment variables instead
+        }
+        final QualpayConfigProperties qualpayConfigProperties = new QualpayConfigProperties(properties, "");
+        qualpayConfigPropertiesConfigurationHandler.setDefaultConfigurable(qualpayConfigProperties);
     }
 }
