@@ -30,7 +30,7 @@ public class EmbeddedDbHelper {
     private static final EmbeddedDbHelper INSTANCE = new EmbeddedDbHelper();
     private EmbeddedDB embeddedDB;
     
-    private static final String DDL_FILE_NAME = "ddl-mysql.sql";
+    private static final String DDL_FILE_NAME = "ddl.sql";
 
     public static EmbeddedDbHelper instance() {
         return INSTANCE;
