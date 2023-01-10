@@ -1,36 +1,22 @@
-drop table if exists qualpay_responses;
+/*
+ * Copyright 2014-2020 Groupon, Inc
+ * Copyright 2020-2020 Equinix, Inc
+ * Copyright 2014-2020 The Billing Project, LLC
+ *
+ * The Billing Project licenses this file to you under the Apache License, version 2.0
+ * (the "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at:
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 
-create table qualpay_responses (
-  record_id serial
-, kb_account_id char(36) not null
-, kb_payment_id char(36) not null
-, kb_payment_transaction_id char(36) not null
-, transaction_type varchar(32) not null
-, amount numeric(15,9)
-, currency char(3)
-, qualpay_id varchar(255) not null
-, additional_data text default null
-, created_date timestamp not null
-, kb_tenant_id char(36) not null
-, primary key(record_id)
-) /*! CHARACTER SET utf8 COLLATE utf8_bin */;
-create index qualpay_responses_kb_payment_id on qualpay_responses(kb_payment_id);
-create index qualpay_responses_kb_payment_transaction_id on qualpay_responses(kb_payment_transaction_id);
-create index qualpay_responses_qualpay_id on qualpay_responses(qualpay_id);
+/* We cannot use timestamp in MySQL because of the implicit TimeZone conversions it does behind the scenes */
+CREATE DOMAIN datetime AS timestamp without time zone;
 
-drop table if exists qualpay_payment_methods;
-create table qualpay_payment_methods (
-  record_id serial
-, kb_account_id char(36) not null
-, kb_payment_method_id char(36) not null
-, qualpay_id varchar(255) not null
-, is_deleted smallint not null default 0
-, additional_data text default null
-, created_date timestamp not null
-, updated_date timestamp not null
-, kb_tenant_id char(36) not null
-, primary key(record_id)
-) /*! CHARACTER SET utf8 COLLATE utf8_bin */;
-create unique index qualpay_payment_methods_kb_payment_id on qualpay_payment_methods(kb_payment_method_id);
-create index qualpay_payment_methods_qualpay_id on qualpay_payment_methods(qualpay_id);
-
+CREATE DOMAIN longtext AS text;

@@ -17,6 +17,7 @@
 
 package org.killbill.billing.plugin.qualpay;
 
+import java.util.Map;
 import java.util.Properties;
 
 import com.google.common.base.Ascii;
@@ -25,6 +26,9 @@ import com.google.common.base.MoreObjects;
 public class QualpayConfigProperties {
 
     private static final String PROPERTY_PREFIX = "org.killbill.billing.plugin.qualpay.";
+    
+    public static final String QUALPAY_API_KEY_KEY = "QUALPAY_API_KEY";
+    public static final String QUALPAY_MERCHANT_ID_KEY = "QUALPAY_MERCHANT_ID";
 
     private static final String DEFAULT_CONNECTION_TIMEOUT = "30000";
     private static final String DEFAULT_READ_TIMEOUT = "60000";
@@ -52,10 +56,16 @@ public class QualpayConfigProperties {
     }
 
     public String getApiKey() {
+        if (apiKey == null || apiKey.isEmpty()) {
+            return getClient(QUALPAY_API_KEY_KEY, null);
+        }
         return apiKey;
     }
 
     public String getMerchantId() {
+        if (merchantId == null || merchantId.isEmpty()) {
+            return getClient(QUALPAY_MERCHANT_ID_KEY, null);
+        }
         return merchantId;
     }
 
@@ -81,5 +91,17 @@ public class QualpayConfigProperties {
 
     public String getKbPassword() {
         return kbPassword;
+    }
+
+    private String getClient(final String envKey, final String defaultValue) {
+        final Map<String, String> env = System.getenv();
+
+        final String value = env.get(envKey);
+
+        if (value == null || value.isEmpty()) {
+            return defaultValue;
+        }
+
+        return value;
     }
 }

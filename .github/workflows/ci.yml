@@ -7,14 +7,16 @@ on:
 
 jobs:
   ci:
-    uses: killbill/gh-actions-shared/.github/workflows/ci.yml@add-support-for-github-packages
+    uses: killbill/gh-actions-shared/.github/workflows/ci.yml@main
     with:
       test-profile-matrix: '[ "travis", "integration-mysql", "integration-postgresql" ]'
+    secrets:
+      extra-env: '{"QUALPAY_API_KEY": "${{ secrets.QUALPAY_API_KEY }}", "QUALPAY_MERCHANT_ID": "${{ secrets.QUALPAY_MERCHANT_ID }}" }'      
 
   integration_test:
-    uses: killbill/gh-actions-shared/.github/workflows/integration_test.yml@add-support-for-github-packages
+    uses: killbill/gh-actions-shared/.github/workflows/integration_test.yml@main
     with:
-      plugin_name: 'killbill-qualpay'
+      plugin_name: 'qualpay'
       integration_tests_goal: 'test:plugins:qualpay'
-      ddl_file: 'src/main/resources/ddl-mysql.sql'
+      ddl_file: 'src/main/resources/ddl.sql'
       integration_tests_ref: 'refs/heads/master'

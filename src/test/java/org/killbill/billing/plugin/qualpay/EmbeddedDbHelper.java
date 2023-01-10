@@ -30,24 +30,34 @@ public class EmbeddedDbHelper {
 
     private static final EmbeddedDbHelper INSTANCE = new EmbeddedDbHelper();
     private EmbeddedDB embeddedDB;
+    
+    private static final String DDL_FILE_NAME = "ddl.sql";
 
     public static EmbeddedDbHelper instance() {
         return INSTANCE;
     }
 
     public void startDb() throws Exception {
-        embeddedDB = PlatformDBTestingHelper.get().getInstance();
 
+        embeddedDB = PlatformDBTestingHelper.get().getInstance();
+        
         // Needed, otherwise get Caused by: java.sql.SQLException: No suitable driver found for jdbc:mysql:<connection-url>
         if (embeddedDB.getDBEngine().equals(DBEngine.MYSQL)) {
             Class.forName("com.mysql.cj.jdbc.Driver");
         }
-
+        
         embeddedDB.initialize();
         embeddedDB.start();
 
-        final String ddl = "ddl-" + embeddedDB.getDBEngine().name().toLowerCase() + ".sql";
-        embeddedDB.executeScript(TestUtils.toString(ddl));
+        final String databaseSpecificDDL = "ddl-" + embeddedDB.getDBEngine().name().toLowerCase() + ".sql";
+        try {
+            embeddedDB.executeScript(TestUtils.toString(databaseSpecificDDL));
+        } catch (final IllegalArgumentException e) {
+            // Ignore, no engine specific DDL
+        }
+
+        final String ddl = TestUtils.toString(DDL_FILE_NAME);
+        embeddedDB.executeScript(ddl);
         embeddedDB.refreshTableNames();
     }
 
