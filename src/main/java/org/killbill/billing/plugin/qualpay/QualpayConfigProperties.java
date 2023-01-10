@@ -27,8 +27,8 @@ public class QualpayConfigProperties {
 
     private static final String PROPERTY_PREFIX = "org.killbill.billing.plugin.qualpay.";
     
-	public static final String QUALPAY_API_KEY_KEY = "QUALPAY_API_KEY";
-	public static final String QUALPAY_MERCHANT_ID_KEY = "QUALPAY_MERCHANT_ID";
+    public static final String QUALPAY_API_KEY_KEY = "QUALPAY_API_KEY";
+    public static final String QUALPAY_MERCHANT_ID_KEY = "QUALPAY_MERCHANT_ID";
 
     private static final String DEFAULT_CONNECTION_TIMEOUT = "30000";
     private static final String DEFAULT_READ_TIMEOUT = "60000";
