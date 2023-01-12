@@ -46,7 +46,7 @@ jobs:
         # Go to Sonatype directly to avoid delay syncs (could get rid of this if actions/setup-java were to support mirrors).
         with:
           mirrors: '[{"id": "oss-releases", "name": "Sonatype releases", "mirrorOf": "*", "url": "https://oss.sonatype.org/content/repositories/releases/"}]'
-          githubServer: false
+          githubServer: true
           servers: '[{"id": "github","configuration": {"httpHeaders": {"property": {"name": "Authorization","value": "Bearer ${{ secrets.GITHUB_TOKEN }}"}}}}]'
       - run: cat ~/.m2/settings.xml
         shell: bash          
