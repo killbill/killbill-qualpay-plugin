@@ -1,5 +1,17 @@
 name: release
 
+on:
+  workflow_dispatch:
+    inputs:
+      parent_version:
+        description: 'New killbill-oss-parent version'
+        required: false
+        default: ''
+      perform_version:
+        description: 'tag to (re-)perform (in case of release:perform failure)'
+        required: false
+        default: ''
+
 jobs:
   release:
     uses: killbill/gh-actions-shared/.github/workflows/release.yml@add-release-workflow
