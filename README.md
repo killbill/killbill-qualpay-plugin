@@ -65,23 +65,24 @@ This PAT guide is valid at the time of writing. It may change, but the idea is t
 
 #### Create settings.xml
 
-1. Create `settings.xml` in the root of project directory, with content:
-```xml
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <servers>
-        <server>
-            <id>github</id>
-            <username>{your-username}</username>
-            <!-- Public token with `read:packages` scope -->
-            <password>{generated-token-from-github}</password>
-        </server>
-    </servers>
-</settings>
-```
+Create `settings.xml` in the root of project directory (or add to `<M2_HOME>/settings.xml`):
+   ```xml
+   <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" 
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     <servers>
+       <server>
+         <id>github</id>
+         <username>{your-username}</username>
+         <!-- Public token with `read:packages` scope -->
+         <password>{generated-token-from-github}</password>
+       </server>
+     </servers>
+   </settings>
+   ```
 
-2. We already have `.mvn/maven.config` file, so maven will pick `settings.xml` file above automatically.
+If `settings.xml` exist in your project root directory, use maven with `--settings` option like: 
+`mvn --settings settings.xml clean install -Dgroups=slow`.
 
 ### Regenerate JOOQ classes
 
