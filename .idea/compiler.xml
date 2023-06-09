@@ -9,8 +9,10 @@
         <module name="qualpay-plugin" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="qualpay-plugin" target="1.8" />
-    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="qualpay-plugin" options="-parameters -XDignore.symbol.file" />
+    </option>
   </component>
 </project>
