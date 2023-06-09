@@ -26,7 +26,7 @@
     <artifactId>qualpay-plugin</artifactId>
     <version>1.0.1-SNAPSHOT</version>
     <packaging>bundle</packaging>
-    <name>qualpay-plugin</name>
+    <name>Kill Bill OSGI Qualpay plugin</name>
     <description>Kill Bill Qualpay plugin</description>
     <url>http://github.com/killbill/killbill-qualpay-plugin</url>
     <scm>
